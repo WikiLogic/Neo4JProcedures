@@ -19,7 +19,9 @@ Java code for updating the database
  
  ####Run:
  
- call WL.AddArgumentGroup([1243, 1254])
+ call WL.CreateArgumentGroup([1243, 1254])
+
+ call WL.AttachArgumentGroup(1210, 1215, "SUPPORTS")
 
 
 ####Setup development:

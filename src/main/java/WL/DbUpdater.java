@@ -33,9 +33,9 @@ public class DbUpdater {
         return "Hello " + name;
     }
 
-    @Procedure(value = "WL.AddArgumentGroup", mode = Mode.SCHEMA)
-    @Description("Takes node id's and returns a new arg group with those nodes as premises'")
-    public void AddArgumentGroup(@Name("nodeIds") List<Long> nodeIds) {
+    @Procedure(value = "WL.CreateArgumentGroup", mode = Mode.SCHEMA)
+    @Description("Takes node id's and create a new arg group with those nodes as premises")
+    public void CreateArgumentGroup(@Name("nodeIds") List<Long> nodeIds) {
 
         Label[] labels = { Label.label("ArgGroup") };
         Node argGroup = db.createNode(labels);
@@ -50,15 +50,27 @@ public class DbUpdater {
             Double thisProb = new Double(node.getProperty("probability").toString()).doubleValue();
             if (lastValue == 0) {
                 lastValue = thisProb;
-            }
-            else
-            {
+            } else {
                 lastValue = lastValue * thisProb;
             }
             //argGroupProb += new Double(node.getProperty("probability").toString()).doubleValue();
         }
 
         argGroup.setProperty("probability", lastValue);
+
+        log.info("HELLO THERE!");
+    }
+
+    @Procedure(value = "WL.AttachArgumentGroup", mode = Mode.SCHEMA)
+    @Description("Link the argGroupId to the claimId with a connection of the type passed in")
+    public void AttachArgumentGroup(@Name("claimId") Long claimId, @Name("argGroupId") Long argGroupId, 
+            @Name("type") String connectionType) {
+
+        Node argGroup = db.getNodeById(argGroupId);
+        Node claim = db.getNodeById(claimId);
+
+        RelationshipType rType = new RelationshipTypeImpl(connectionType);
+        argGroup.createRelationshipTo(claim, rType);
 
         log.info("HELLO THERE!");
     }

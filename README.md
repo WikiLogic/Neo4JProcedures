@@ -7,9 +7,9 @@ Java code for updating the database
 
  Download binary from https://github.com/WikiLogic/Neo4JProcedures/releases
  
- Add to ...\Neo4j\default.graphdb\plugins
+ Add to ...\Neo4j\default.graphdb\plugins  Note: Windows has two plugin folders. Do NOT use the plugin folder at the installation   directory.
  
- Note: Windows has two plugin folders. Do NOT use the plugin folder at the installation directory.
+ Restart Neo4
  
  ####Helpful functions for checking it worked:
  

@@ -1,4 +1,4 @@
-package example;
+package WL;
 
 import java.util.List;
 import java.util.Map;
@@ -69,7 +69,7 @@ public class FullTextIndex {
      * @return the nodes found by the query
      */
     // TODO: This is here as a workaround, because index().forNodes() is not read-only
-    @Procedure(value = "example.search", mode = Mode.WRITE)
+    @Procedure(value = "WL.search", mode = Mode.WRITE)
     @Description("Execute lucene query in the given index, return found nodes")
     public Stream<SearchHit> search(@Name("label") String label, @Name("query") String query) {
         String index = indexName(label);
@@ -105,7 +105,7 @@ public class FullTextIndex {
      * @param propKeys a list of property keys to index, only the ones the node
      *                 actually contains will be added
      */
-    @Procedure(value = "example.index", mode = Mode.SCHEMA)
+    @Procedure(value = "WL.index", mode = Mode.SCHEMA)
     @Description("For the node with the given node-id, add properties for the provided keys to index per label")
     public void index(@Name("nodeId") long nodeId, @Name("properties") List<String> propKeys) {
         Node node = db.getNodeById(nodeId);
@@ -151,7 +151,7 @@ public class FullTextIndex {
     //      @GET
     //@Produces( MediaType.TEXT_PLAIN )
     //@Path( "/{nodeId}" )
-    @Procedure(value = "example.ModifyProbability", mode = Mode.SCHEMA)
+    @Procedure(value = "WL.ModifyProbability", mode = Mode.SCHEMA)
     @Description("For the node with the given node-id, add properties for the provided keys to hello per label")
     public void ModifyProbability(@Name("nodeId") long nodeId) {
         Node node = db.getNodeById(nodeId);

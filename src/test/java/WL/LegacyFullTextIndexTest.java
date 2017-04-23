@@ -1,4 +1,4 @@
-package example;
+package WL;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -12,12 +12,12 @@ import static org.neo4j.driver.v1.Values.parameters;
 
 public class LegacyFullTextIndexTest
 {
-    // This rule starts a Neo4j instance for us
+    //This rule starts a Neo4j instance for us
     @Rule
     public Neo4jRule neo4j = new Neo4jRule()
 
             // This is the Procedure we want to test
-            .withProcedure( FullTextIndex.class );
+             .withProcedure( FullTextIndex.class );
 
     @Test
     public void shouldAllowIndexingAndFindingANode() throws Throwable
@@ -35,10 +35,10 @@ public class LegacyFullTextIndexTest
                     .get( 0 ).asLong();
 
             // When I use the index procedure to index a node
-            session.run( "CALL example.index({id}, ['name'])", parameters( "id", nodeId ) );
+            session.run( "CALL WL.index({id}, ['name'])", parameters( "id", nodeId ) );
 
             // Then I can search for that node with lucene query syntax
-            StatementResult result = session.run( "CALL example.search('User', 'name:Brook*')" );
+            StatementResult result = session.run( "CALL WL.search('User', 'name:Brook*')" );
             assertThat( result.single().get( "nodeId" ).asLong(), equalTo( nodeId ) );
         }
     }

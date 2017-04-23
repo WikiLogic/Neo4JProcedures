@@ -19,7 +19,7 @@ Java code for updating the database
  
  ####Run:
  
- call example.AddArgumentGroup([1243, 1254])
+ call WL.AddArgumentGroup([1243, 1254])
 
 
 ####Setup development:

@@ -1,4 +1,4 @@
-package example;
+package WL;
 
 import java.util.List;
 import java.util.Iterator;
@@ -16,10 +16,9 @@ import org.neo4j.graphdb.GraphDatabaseService;
 /**
  * This is an example how you can create a simple user-defined function for Neo4j.
  */
-public class WL
-{ 
+public class DbUpdater {
     // This field declares that we need a GraphDatabaseService
-                  // as context when any procedure in this class is invoked
+    // as context when any procedure in this class is invoked
     @Context
     public GraphDatabaseService db;
 
@@ -29,30 +28,37 @@ public class WL
     public Log log;
 
     @UserFunction
-    @Description("WHo to mention?")
-    public String HelloX(@Name("name") String name) 
-    {
+    @Description("Who to mention?")
+    public String Hello(@Name("name") String name) {
         return "Hello " + name;
     }
 
-    @Procedure(value = "example.AddArgumentGroup", mode = Mode.SCHEMA)
-    @Description("For the node with the given node-id, add properties for the provided keys to hello per label")
+    @Procedure(value = "WL.AddArgumentGroup", mode = Mode.SCHEMA)
+    @Description("Takes node id's and returns a new arg group with those nodes as premises'")
     public void AddArgumentGroup(@Name("nodeIds") List<Long> nodeIds) {
 
         Label[] labels = { Label.label("ArgGroup") };
         Node argGroup = db.createNode(labels);
 
-        int argGroupProb = 0;
+        double lastValue = 0;
         for (Iterator<Long> i = nodeIds.iterator(); i.hasNext();) {
             Long item = i.next();
             Node node = db.getNodeById(item);
             RelationshipType rType = new RelationshipTypeImpl("USED_IN");
             node.createRelationshipTo(argGroup, rType);
 
-            argGroupProb += (int) node.getProperty("probability");
+            Double thisProb = new Double(node.getProperty("probability").toString()).doubleValue();
+            if (lastValue == 0) {
+                lastValue = thisProb;
+            }
+            else
+            {
+                lastValue = lastValue * thisProb;
+            }
+            //argGroupProb += new Double(node.getProperty("probability").toString()).doubleValue();
         }
 
-        argGroup.setProperty("probability", argGroupProb);
+        argGroup.setProperty("probability", lastValue);
 
         log.info("HELLO THERE!");
     }

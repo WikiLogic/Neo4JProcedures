@@ -26,9 +26,9 @@ Java code for updating the database
 
 ####Build binary:
 
-Navigate to root folder with pom.xml file
+Navigate to the root folder with the pom.xml file in your command window
 
-mvn clean package
+run: mvn clean package
 
 target folder contains original-procedure-template-1.0.0-SNAPSHOT
 

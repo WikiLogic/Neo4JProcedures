@@ -27,3 +27,8 @@ Java code for updating the database
 ####Setup development:
 
 Coming soon
+
+####Build binary:
+Navigate to root folder with pom.xml file
+mvn clean package
+target folder contains original-procedure-template-1.0.0-SNAPSHOT

@@ -9,9 +9,12 @@ import org.neo4j.graphdb.Label;
 import org.neo4j.graphdb.Node;
 import org.neo4j.procedure.UserFunction;
 import org.neo4j.graphdb.RelationshipType;
+import org.neo4j.graphdb.Relationship;
 import org.neo4j.procedure.*;
 import org.neo4j.logging.Log;
+import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Transaction;
 
 /**
  * This is an example how you can create a simple user-defined function for Neo4j.
@@ -33,6 +36,10 @@ public class DbUpdater {
         return "Hello " + name;
     }
 
+    /**
+     * Arguments multiply all parts together as its the group is only valid if all the parts happen to be correct 
+     * This means if one premise is > 50, it will make it too small to count
+     */
     @Procedure(value = "WL.CreateArgumentGroup", mode = Mode.SCHEMA)
     @Description("Takes node id's and create a new arg group with those nodes as premises")
     public void CreateArgumentGroup(@Name("nodeIds") List<Long> nodeIds) {
@@ -53,7 +60,6 @@ public class DbUpdater {
             } else {
                 lastValue = lastValue * thisProb;
             }
-            //argGroupProb += new Double(node.getProperty("probability").toString()).doubleValue();
         }
 
         argGroup.setProperty("probability", lastValue);
@@ -63,16 +69,147 @@ public class DbUpdater {
 
     @Procedure(value = "WL.AttachArgumentGroup", mode = Mode.SCHEMA)
     @Description("Link the argGroupId to the claimId with a connection of the type passed in")
-    public void AttachArgumentGroup(@Name("claimId") Long claimId, @Name("argGroupId") Long argGroupId, 
+    //http://stackoverflow.com/questions/33163622/neo4j-update-properties-on-10-million-nodes
+    public void AttachArgumentGroup(@Name("argGroupId") Long argGroupId, @Name("claimId") Long claimId,
             @Name("type") String connectionType) {
 
         Node argGroup = db.getNodeById(argGroupId);
         Node claim = db.getNodeById(claimId);
 
+        //create the relationship
         RelationshipType rType = new RelationshipTypeImpl(connectionType);
         argGroup.createRelationshipTo(claim, rType);
 
-        log.info("HELLO THERE!");
+        /*
+        //if the arg is >50 then its useful so add it (otherwise its a false -differs from OPPOSSES- argument so we dont include it for working out claims final score)
+        Double argProb = new Double(argGroup.getProperty("probability").toString()).doubleValue();
+        if (argProb < 50)
+            return;
+        
+        //get the claim property as it is right now before argGroup added
+        Double claimProb = new Double(claim.getProperty("probability").toString()).doubleValue();
+        
+        //want to get probability it didnt happen
+        //now get teh probabiltiy both did not happen together
+        */
+
+        Double attachedArgProb = new Double(argGroup.getProperty("probability").toString()).doubleValue();
+        Double claimOriginalProb = new Double(claim.getProperty("probability").toString()).doubleValue();
+
+        //set new claim property with by adding new value then dividing by number of values added(2 in this case) --WRONG!
+        Double newClaimProb;//TODO: make this right!!!
+        if (attachedArgProb > .5) {
+            newClaimProb = 1.0;
+        } else {
+            newClaimProb = 0.0;
+        }
+
+        claim.setProperty("probability", newClaimProb);
+
+        if (claimOriginalProb != newClaimProb) {
+
+            //now arg Group added, and claim has changed to reflect, get all arg groups and update them
+            UpdateArgState(claim);
+            log.info("updating");
+        }
+
+    }
+
+    /**
+     * Takes the claim that has changed and gets all the argGroups its involved with and sees if they need updated
+     */
+    private void UpdateArgState(Node startClaim) {
+        Transaction transaction = db.beginTx();
+
+        //get all the claims realtionships where it was used in the argGroup
+        Iterable<org.neo4j.graphdb.Relationship> usedInRelations = startClaim
+                .getRelationships(MyRelationshipTypes.USED_IN, Direction.OUTGOING);
+
+        double newArgProbability = 0;
+        for (org.neo4j.graphdb.Relationship entry : usedInRelations) {
+            try {
+                Node argNode = entry.getEndNode();
+                Double argNodeOriginalValue = new Double(argNode.getProperty("probability").toString()).doubleValue();
+                // double argBeforeChange = (Double) argNode.getProperty("probability");
+                // // divide to get rid of old score then times to udpate with new
+                // newArgProbability = (argBeforeChange / claimBeforeChange) * claimAfterChange;
+                // argNode.setProperty("probability", newArgProbability);
+
+                //get all its nodes and if they are all correct now, change probability
+                Iterable<org.neo4j.graphdb.Relationship> nodesInArgGroup = argNode
+                        .getRelationships(MyRelationshipTypes.USED_IN, Direction.INCOMING);
+                boolean state = true;
+                for (org.neo4j.graphdb.Relationship node : nodesInArgGroup) {
+                    if (new Double(node.getProperty("probability").toString()).doubleValue() < .5) {
+                        state = false;
+                        break;
+                    }
+                }
+
+                //check if there has been a change from cogent to uncogent or vice versa which means we have to update
+                if (argNodeOriginalValue > 0.0 && state == false) {
+                    argNode.setProperty("probability", 1.0);
+                    UpdateClaimState(argNode);
+                } else if (argNodeOriginalValue < 1.0 && state == true) {
+                    argNode.setProperty("probability", 0.0);
+
+                    UpdateClaimState(argNode);
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        transaction.success();
+        transaction.close();
+    }
+
+    private void UpdateClaimState(Node originalArgNode) {
+        Transaction transaction = db.beginTx();
+
+        //get all the claims realtionships where it was used in the argGroup
+        Iterable<org.neo4j.graphdb.Relationship> usedForRelations = originalArgNode
+                .getRelationships(MyRelationshipTypes.SUPPORTS, Direction.OUTGOING);
+
+        double newClaimProbability = 0;
+        for (org.neo4j.graphdb.Relationship entry : usedForRelations) {
+            try {
+
+                Node claimNode = entry.getEndNode();
+
+                //the arg node getting its usedForRelations probably only gets back othe one node but for future proof
+                //we check that the node does not have other arg goups
+                Iterable<org.neo4j.graphdb.Relationship> supportingArgGroups = claimNode
+                        .getRelationships(MyRelationshipTypes.SUPPORTS, Direction.INCOMING);
+                boolean state = false;
+                for (org.neo4j.graphdb.Relationship argGroup : supportingArgGroups) {
+                    Node argNode = argGroup.getEndNode();
+
+                    Double argValue = new Double(argNode.getProperty("probability").toString()).doubleValue();
+                    if (argValue > 0.0) {
+                        state = true;
+                        break;
+                    }
+                }
+
+                //if it is false, there is not even one supporting arg group for the claim so it needs to udpate
+                if (state = false)
+                    claimNode.setProperty("probability", 0.0);
+
+                UpdateArgState(claimNode);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        transaction.success();
+        transaction.close();
+    }
+
+    enum MyRelationshipTypes implements RelationshipType {
+        USED_IN, SUPPORTS, OPPOSSES
     }
 
     private static class RelationshipTypeImpl implements RelationshipType {
@@ -89,3 +226,57 @@ public class DbUpdater {
         }
     }
 }
+
+// private void UpdateArgProbability(Node startClaim, Double claimBeforeChange, Double claimAfterChange) {
+//     Transaction transaction = db.beginTx();
+
+//     //get all the claims realtionships where it was used in the argGroup
+//     Iterable<org.neo4j.graphdb.Relationship> usedInRelations = startClaim
+//             .getRelationships(MyRelationshipTypes.USED_IN, Direction.OUTGOING);
+
+//     double newArgProbability = 0;
+//     for (org.neo4j.graphdb.Relationship entry : usedInRelations) {
+//         try {
+//             Node argNode = entry.getEndNode();
+//             double argBeforeChange = (Double) argNode.getProperty("probability");
+//             // divide to get rid of old score then times to udpate with new
+//             newArgProbability = (argBeforeChange / claimBeforeChange) * claimAfterChange;
+//             argNode.setProperty("probability", newArgProbability);
+
+//             UpdateClaimProbability(argNode, argBeforeChange, newArgProbability);
+
+//         } catch (Exception e) {
+//             e.printStackTrace();
+//         }
+//     }
+
+//     transaction.success();
+//     transaction.close();
+// }
+
+// private void UpdateClaimProbability(Node argNode, Double argBeforeChange, Double newArgProbability) {
+//     Transaction transaction = db.beginTx();
+
+//     //get all the claims realtionships where it was used in the argGroup
+//     Iterable<org.neo4j.graphdb.Relationship> usedForRelations = argNode
+//             .getRelationships(MyRelationshipTypes.SUPPORTS, Direction.OUTGOING);
+
+//     double newClaimProbability = 0;
+//     for (org.neo4j.graphdb.Relationship entry : usedForRelations) {
+//         try {
+//             Node claimNode = entry.getEndNode();
+//             double claimBeforeChange = (Double) claimNode.getProperty("probability");
+//             // divide to get rid of old score then times to udpate with new
+//             newClaimProbability = (claimBeforeChange / argBeforeChange) * newArgProbability;
+//             claimNode.setProperty("probability", newClaimProbability);
+
+//             UpdateClaimProbability(claimNode, claimBeforeChange, newClaimProbability);
+
+//         } catch (Exception e) {
+//             e.printStackTrace();
+//         }
+//     }
+
+//     transaction.success();
+//     transaction.close();
+// }

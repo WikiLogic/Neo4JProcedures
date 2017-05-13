@@ -1,6 +1,8 @@
 package WL;
 
 import java.util.List;
+import java.util.stream.Stream;
+
 import java.util.Iterator;
 
 import org.neo4j.procedure.Description;
@@ -9,7 +11,6 @@ import org.neo4j.graphdb.Label;
 import org.neo4j.graphdb.Node;
 import org.neo4j.procedure.UserFunction;
 import org.neo4j.graphdb.RelationshipType;
-import org.neo4j.graphdb.Relationship;
 import org.neo4j.procedure.*;
 import org.neo4j.logging.Log;
 import org.neo4j.graphdb.Direction;
@@ -35,14 +36,14 @@ public class DbUpdater {
     public String Hello(@Name("name") String name) {
         return "Hello " + name;
     }
-
+    
     /**
      * Arguments multiply all parts together as its the group is only valid if all the parts happen to be correct 
      * This means if one premise is > 50, it will make it too small to count
      */
     @Procedure(value = "WL.CreateArgumentGroup", mode = Mode.SCHEMA)
     @Description("Takes node id's and create a new arg group with those nodes as premises")
-    public void CreateArgumentGroup(@Name("nodeIds") List<Long> nodeIds) {
+    public Stream<LongResult> CreateArgumentGroup(@Name("nodeIds") List<Long> nodeIds) {
 
         Label[] labels = { Label.label("ArgGroup") };
         Node argGroup = db.createNode(labels);
@@ -65,6 +66,9 @@ public class DbUpdater {
         argGroup.setProperty("probability", lastValue);
 
         log.info("HELLO THERE!");
+
+        //return Stream.of(argGroup.getId());
+        return Stream.of(new LongResult(argGroup.getId()));
     }
 
     @Procedure(value = "WL.AttachArgumentGroup", mode = Mode.SCHEMA)
@@ -212,6 +216,8 @@ public class DbUpdater {
         USED_IN, SUPPORTS, OPPOSSES
     }
 
+
+
     private static class RelationshipTypeImpl implements RelationshipType {
 
         private final String _name;
@@ -226,6 +232,7 @@ public class DbUpdater {
         }
     }
 }
+
 
 // private void UpdateArgProbability(Node startClaim, Double claimBeforeChange, Double claimAfterChange) {
 //     Transaction transaction = db.beginTx();

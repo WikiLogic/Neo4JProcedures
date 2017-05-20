@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import java.util.Iterator;
-
 import org.neo4j.procedure.Description;
 import org.neo4j.procedure.Name;
 import org.neo4j.graphdb.Label;
@@ -16,6 +15,10 @@ import org.neo4j.logging.Log;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Transaction;
+
+import java.util.Map;
+import org.neo4j.helpers.collection.MapUtil;
+import org.neo4j.graphdb.Result;
 
 /**
  * This is an example how you can create a simple user-defined function for Neo4j.
@@ -36,7 +39,7 @@ public class DbUpdater {
     public String Hello(@Name("name") String name) {
         return "Hello " + name;
     }
-    
+
     /**
      * Arguments multiply all parts together as its the group is only valid if all the parts happen to be correct 
      * This means if one premise is > 50, it will make it too small to count
@@ -74,7 +77,7 @@ public class DbUpdater {
     @Procedure(value = "WL.AttachArgumentGroup", mode = Mode.SCHEMA)
     @Description("Link the argGroupId to the claimId with a connection of the type passed in")
     //http://stackoverflow.com/questions/33163622/neo4j-update-properties-on-10-million-nodes
-    public void AttachArgumentGroup(@Name("argGroupId") Long argGroupId, @Name("claimId") Long claimId,
+    public Stream<ClaimResult> AttachArgumentGroup(@Name("argGroupId") Long argGroupId, @Name("claimId") Long claimId,
             @Name("type") String connectionType) {
 
         Node argGroup = db.getNodeById(argGroupId);
@@ -100,8 +103,7 @@ public class DbUpdater {
         Double attachedArgProb = new Double(argGroup.getProperty("probability").toString()).doubleValue();
         Double claimOriginalProb = new Double(claim.getProperty("probability").toString()).doubleValue();
 
-        //set new claim property with by adding new value then dividing by number of values added(2 in this case) --WRONG!
-        Double newClaimProb;//TODO: make this right!!!
+        Double newClaimProb;
         if (attachedArgProb > .5) {
             newClaimProb = 1.0;
         } else {
@@ -117,6 +119,122 @@ public class DbUpdater {
             log.info("updating");
         }
 
+        //return a claim object with attached arg groups - this is a query
+        Result result;
+        Transaction tx = db.beginTx();
+        try {
+            result = db.execute(GetClaimWithArgs(claimId));
+
+            tx.success();
+        } finally {
+            tx.close();
+        }
+
+        // String stringResult = result.resultAsString();
+        // return Stream.of(new SearchHit(stringResult));
+
+        return result.stream().map(ClaimResult::new);
+    }
+
+    public static class SearchHit {
+        // This records contain a single field named 'nodeId'
+        public String res;
+
+        public SearchHit(String res) {
+            this.res = res;
+        }
+    }
+
+
+    public class ClaimResult {
+        public Object mainClaim;
+
+        public ClaimResult(Object mainClaim) {
+            this.mainClaim = mainClaim;
+        }
+
+        public ClaimResult(Map<String, Object> row) {
+
+            this((Object) row.get("claim"));
+        }
+    }
+
+
+    // public class ClaimResult {
+    //     public Node mainClaim;
+    //     public Node argGroup;
+
+    //     public ClaimResult(Node mainClaim, Node argGroup) {
+    //         this.mainClaim = mainClaim;
+    //         this.argGroup = argGroup;
+    //     }
+
+    //     public ClaimResult(Map<String, Object> row) {
+
+    //         this((Node) row.get("claim"), (Node) row.get("argGroup"));
+    //     }
+    // }
+
+    // public class ArgResult {
+    //     public Node argNode;
+    //     public List<Node> premises;
+
+    //     public ArgResult(Node argNode, List<Node> premises) {
+    //         this.argNode = argNode;
+    //         this.premises = premises;
+    //     }
+
+    //     // public HelpResult(Map<String, Object> row) {
+    //     //     this((String) row.get("type"), (String) row.get("name"), (String) row.get("description"),
+    //     //             (String) row.get("signature"), null, (Boolean) row.get("writes"));
+    //     // }
+    // }
+
+
+
+
+
+    // String filter = " WHERE name starts with 'apoc.' "
+    //         + " AND ({name} IS NULL  OR toLower(name) CONTAINS toLower({name}) "
+    //         + " OR ({desc} IS NOT NULL AND toLower(description) CONTAINS toLower({desc}))) "
+    //         + "RETURN type, name, description, signature ";
+
+    // String query = "WITH 'procedure' as type CALL dbms.procedures() yield name, description, signature " + filter +
+    //             " UNION ALL " +
+    //             "WITH 'function' as type CALL dbms.functions() yield name, description, signature " + filter;
+                
+    //             return db.execute(query, map("name", name, "desc", searchText ? name : null))
+    //             .stream().map(HelpResult::new);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    private String GetClaimWithArgs(long claimID) {
+        // return "MATCH (claim) " 
+        // + "WHERE (claim:Claim OR claim:Axiom) AND (ID(claim) =" + claimID + ") "
+        //         + "RETURN claim";
+        
+        return
+        
+        "MATCH (claim) " + "WHERE (claim:Claim OR claim:Axiom) AND (ID(claim) ="
+        + claimID + ") "
+                + "OPTIONAL MATCH (argument:ArgGroup)-[argLink]->(claim) "
+                + "OPTIONAL MATCH (premis:Claim)-[premisLink]->(argument) " + "WITH claim, argument, argLink,  "
+                + "CASE WHEN ID(premis) IS NULL THEN null ELSE {id: ID(premis), text: premis.text, labels: LABELS(premis), probability: premis.probability} END AS premises "
+                + "WITH claim,  "
+                + "CASE WHEN ID(argument) IS NULL THEN null ELSE {id: ID(argument), type:TYPE(argLink), probability: argument.probability, premises: COLLECT(premises)} END AS arguments  "
+                + "WITH {id: id(claim), text: claim.text, labels: LABELS(claim), probability: claim.probability, arguments: COLLECT(arguments)} AS claim "
+                + "RETURN claim " + "LIMIT 100";
     }
 
     /**
@@ -216,8 +334,6 @@ public class DbUpdater {
         USED_IN, SUPPORTS, OPPOSSES
     }
 
-
-
     private static class RelationshipTypeImpl implements RelationshipType {
 
         private final String _name;
@@ -232,7 +348,6 @@ public class DbUpdater {
         }
     }
 }
-
 
 // private void UpdateArgProbability(Node startClaim, Double claimBeforeChange, Double claimAfterChange) {
 //     Transaction transaction = db.beginTx();
@@ -286,4 +401,74 @@ public class DbUpdater {
 
 //     transaction.success();
 //     transaction.close();
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+// public Stream<GraphResult> graph()
+//     {
+//         Result execute = db.execute( "CALL dbms.cluster.overview()" );
+//         List<Node> servers = new LinkedList<>();
+//         List<Relationship> relationships = new LinkedList<>();
+
+//         while ( execute.hasNext() )
+//         {
+//             Map<String,Object> next = execute.next();
+//             String role = (String) next.get( "role" );
+//             String id = (String) next.get( "id" );
+//             Label roleLabel = Label.label( role );
+//             String[] addresses = Arrays.stream( (Object[]) next.get( "addresses" ) ).toArray( String[]::new );
+//             Map<String,Object> properties = new HashMap<>();
+//             properties.put( "name", shortName.get( role ) );
+//             properties.put( "title", role );
+//             properties.put( boltAddressKey, addresses[0] );
+//             properties.put( "http_address", addresses[1] );
+//             properties.put( "cluster_id", id );
+//             Node server = new VirtualNode( new Label[]{roleLabel}, properties, db );
+//             servers.add( server );
+//         }
+
+//         Optional<Node> leaderNode = getLeaderNode( servers );
+//         if ( leaderNode.isPresent() )
+//         {
+//             for ( Node server : servers )
+//             {
+//                 if ( server.hasLabel( Label.label( "FOLLOWER" ) ) )
+//                 {
+//                     VirtualRelationship follows =
+//                             new VirtualRelationship( server, leaderNode.get(), RelationshipType.withName( "FOLLOWS" ) );
+//                     relationships.add( follows );
+//                 }
+//             }
+//         }
+
+//         VirtualNode client =
+//                 new VirtualNode( new Label[]{Label.label( "CLIENT" )}, singletonMap( "name", "Client" ), db );
+//         Optional<Relationship> clientConnection = determineClientConnection( servers, client );
+//         if ( clientConnection.isPresent() )
+//         {
+//             servers.add( client );
+//             relationships.add( clientConnection.get() );
+//         }
+
+//         GraphResult graphResult = new GraphResult( servers, relationships );
+//         return Stream.of( graphResult );
+//     }
+// public class GraphResult {
+//     public final List<Node> nodes;
+//     public final List<Relationship> relationships;
+
+//     public GraphResult(List<Node> nodes, List<Relationship> relationships) {
+//         this.nodes = nodes;
+//         this.relationships = relationships;
+//     }
 // }

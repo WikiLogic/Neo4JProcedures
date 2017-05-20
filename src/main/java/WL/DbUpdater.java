@@ -147,10 +147,11 @@ public class DbUpdater {
 
 
     public class ClaimResult {
-        public Object mainClaim;
+        //these names dicate the names in the final data
+        public Object claim;
 
-        public ClaimResult(Object mainClaim) {
-            this.mainClaim = mainClaim;
+        public ClaimResult(Object claim) {
+            this.claim = claim;
         }
 
         public ClaimResult(Map<String, Object> row) {

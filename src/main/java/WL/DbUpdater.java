@@ -1,9 +1,12 @@
 package WL;
 
+import WL.ReturnObjects.LongResult;
+import WL.ReturnObjects.ClaimResult;
+
 import java.util.List;
 import java.util.stream.Stream;
-
 import java.util.Iterator;
+
 import org.neo4j.procedure.Description;
 import org.neo4j.procedure.Name;
 import org.neo4j.graphdb.Label;
@@ -15,9 +18,6 @@ import org.neo4j.logging.Log;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Transaction;
-
-import java.util.Map;
-import org.neo4j.helpers.collection.MapUtil;
 import org.neo4j.graphdb.Result;
 
 /**
@@ -136,99 +136,10 @@ public class DbUpdater {
         return result.stream().map(ClaimResult::new);
     }
 
-    public static class SearchHit {
-        // This records contain a single field named 'nodeId'
-        public String res;
-
-        public SearchHit(String res) {
-            this.res = res;
-        }
-    }
-
-
-    public class ClaimResult {
-        //these names dicate the names in the final data
-        public Object claim;
-
-        public ClaimResult(Object claim) {
-            this.claim = claim;
-        }
-
-        public ClaimResult(Map<String, Object> row) {
-
-            this((Object) row.get("claim"));
-        }
-    }
-
-
-    // public class ClaimResult {
-    //     public Node mainClaim;
-    //     public Node argGroup;
-
-    //     public ClaimResult(Node mainClaim, Node argGroup) {
-    //         this.mainClaim = mainClaim;
-    //         this.argGroup = argGroup;
-    //     }
-
-    //     public ClaimResult(Map<String, Object> row) {
-
-    //         this((Node) row.get("claim"), (Node) row.get("argGroup"));
-    //     }
-    // }
-
-    // public class ArgResult {
-    //     public Node argNode;
-    //     public List<Node> premises;
-
-    //     public ArgResult(Node argNode, List<Node> premises) {
-    //         this.argNode = argNode;
-    //         this.premises = premises;
-    //     }
-
-    //     // public HelpResult(Map<String, Object> row) {
-    //     //     this((String) row.get("type"), (String) row.get("name"), (String) row.get("description"),
-    //     //             (String) row.get("signature"), null, (Boolean) row.get("writes"));
-    //     // }
-    // }
-
-
-
-
-
-    // String filter = " WHERE name starts with 'apoc.' "
-    //         + " AND ({name} IS NULL  OR toLower(name) CONTAINS toLower({name}) "
-    //         + " OR ({desc} IS NOT NULL AND toLower(description) CONTAINS toLower({desc}))) "
-    //         + "RETURN type, name, description, signature ";
-
-    // String query = "WITH 'procedure' as type CALL dbms.procedures() yield name, description, signature " + filter +
-    //             " UNION ALL " +
-    //             "WITH 'function' as type CALL dbms.functions() yield name, description, signature " + filter;
-                
-    //             return db.execute(query, map("name", name, "desc", searchText ? name : null))
-    //             .stream().map(HelpResult::new);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    private String GetClaimWithArgs(long claimID) {
-        // return "MATCH (claim) " 
-        // + "WHERE (claim:Claim OR claim:Axiom) AND (ID(claim) =" + claimID + ") "
-        //         + "RETURN claim";
-        
-        return
-        
-        "MATCH (claim) " + "WHERE (claim:Claim OR claim:Axiom) AND (ID(claim) ="
-        + claimID + ") "
+    @Procedure(value = "WL.GetClaimWithArgs", mode = Mode.SCHEMA)
+    @Description("Gets the claim id and its argGroups")
+    public String GetClaimWithArgs(long claimID) {
+        return "MATCH (claim) " + "WHERE (claim:Claim OR claim:Axiom) AND (ID(claim) =" + claimID + ") "
                 + "OPTIONAL MATCH (argument:ArgGroup)-[argLink]->(claim) "
                 + "OPTIONAL MATCH (premis:Claim)-[premisLink]->(argument) " + "WITH claim, argument, argLink,  "
                 + "CASE WHEN ID(premis) IS NULL THEN null ELSE {id: ID(premis), text: premis.text, labels: LABELS(premis), probability: premis.probability} END AS premises "
@@ -404,17 +315,6 @@ public class DbUpdater {
 //     transaction.close();
 // }
 
-
-
-
-
-
-
-
-
-
-
-
 // public Stream<GraphResult> graph()
 //     {
 //         Result execute = db.execute( "CALL dbms.cluster.overview()" );
@@ -473,3 +373,45 @@ public class DbUpdater {
 //         this.relationships = relationships;
 //     }
 // }
+
+// public class ClaimResult {
+//     public Node mainClaim;
+//     public Node argGroup;
+
+//     public ClaimResult(Node mainClaim, Node argGroup) {
+//         this.mainClaim = mainClaim;
+//         this.argGroup = argGroup;
+//     }
+
+//     public ClaimResult(Map<String, Object> row) {
+
+//         this((Node) row.get("claim"), (Node) row.get("argGroup"));
+//     }
+// }
+
+// public class ArgResult {
+//     public Node argNode;
+//     public List<Node> premises;
+
+//     public ArgResult(Node argNode, List<Node> premises) {
+//         this.argNode = argNode;
+//         this.premises = premises;
+//     }
+
+//     // public HelpResult(Map<String, Object> row) {
+//     //     this((String) row.get("type"), (String) row.get("name"), (String) row.get("description"),
+//     //             (String) row.get("signature"), null, (Boolean) row.get("writes"));
+//     // }
+// }
+
+// String filter = " WHERE name starts with 'apoc.' "
+//         + " AND ({name} IS NULL  OR toLower(name) CONTAINS toLower({name}) "
+//         + " OR ({desc} IS NOT NULL AND toLower(description) CONTAINS toLower({desc}))) "
+//         + "RETURN type, name, description, signature ";
+
+// String query = "WITH 'procedure' as type CALL dbms.procedures() yield name, description, signature " + filter +
+//             " UNION ALL " +
+//             "WITH 'function' as type CALL dbms.functions() yield name, description, signature " + filter;
+
+//             return db.execute(query, map("name", name, "desc", searchText ? name : null))
+//             .stream().map(HelpResult::new);

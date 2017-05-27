@@ -44,7 +44,7 @@ public class DbUpdater {
      * Arguments multiply all parts together as its the group is only valid if all the parts happen to be correct 
      * This means if one premise is > 50, it will make it too small to count
      */
-    @Procedure(value = "WL.CreateArgumentGroup", mode = Mode.SCHEMA)
+    @Procedure(value = "WL.CreateArgumentGroup", mode = Mode.WRITE)
     @Description("Takes node id's and create a new arg group with those nodes as premises")
     public Stream<LongResult> CreateArgumentGroup(@Name("nodeIds") List<Long> nodeIds) {
 
@@ -74,7 +74,7 @@ public class DbUpdater {
         return Stream.of(new LongResult(argGroup.getId()));
     }
 
-    @Procedure(value = "WL.AttachArgumentGroup", mode = Mode.SCHEMA)
+    @Procedure(value = "WL.AttachArgumentGroup", mode = Mode.WRITE)
     @Description("Link the argGroupId to the claimId with a connection of the type passed in")
     //http://stackoverflow.com/questions/33163622/neo4j-update-properties-on-10-million-nodes
     public Stream<ClaimResult> AttachArgumentGroup(@Name("argGroupId") Long argGroupId, @Name("claimId") Long claimId,
@@ -120,26 +120,27 @@ public class DbUpdater {
         }
 
         //return a claim object with attached arg groups - this is a query
+        return GetClaimWithArgs(claimId);
+    }
+
+    @Procedure(value = "WL.GetClaimWithArgs", mode = Mode.READ)
+    @Description("Gets the claim id and its argGroups")
+    public Stream<ClaimResult> GetClaimWithArgs(@Name("claimId") long claimId) {
         Result result;
         Transaction tx = db.beginTx();
         try {
-            result = db.execute(GetClaimWithArgs(claimId));
+            result = db.execute(GetClaimWithArgsString(claimId));
 
             tx.success();
         } finally {
             tx.close();
         }
 
-        // String stringResult = result.resultAsString();
-        // return Stream.of(new SearchHit(stringResult));
-
         return result.stream().map(ClaimResult::new);
     }
 
-    @Procedure(value = "WL.GetClaimWithArgs", mode = Mode.SCHEMA)
-    @Description("Gets the claim id and its argGroups")
-    public String GetClaimWithArgs(long claimID) {
-        return "MATCH (claim) " + "WHERE (claim:Claim OR claim:Axiom) AND (ID(claim) =" + claimID + ") "
+    private String GetClaimWithArgsString(long claimId) {
+        return "MATCH (claim) " + "WHERE (claim:Claim OR claim:Axiom) AND (ID(claim) =" + claimId + ") "
                 + "OPTIONAL MATCH (argument:ArgGroup)-[argLink]->(claim) "
                 + "OPTIONAL MATCH (premis:Claim)-[premisLink]->(argument) " + "WITH claim, argument, argLink,  "
                 + "CASE WHEN ID(premis) IS NULL THEN null ELSE {id: ID(premis), text: premis.text, labels: LABELS(premis), probability: premis.probability} END AS premises "

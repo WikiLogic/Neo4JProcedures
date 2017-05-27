@@ -28,6 +28,14 @@
       <scope>provided</scope>
     </dependency>
 
+    <dependency>
+    <groupId>org.neo4j</groupId>
+    <artifactId>procedure-compiler</artifactId>
+    <version>${neo4j.version}</version>
+    <scope>compile</scope>
+    <optional>true</optional>
+   </dependency>
+
     <!-- Test Dependencies -->
     <dependency>
       <!-- This is used for a utility that lets us start Neo4j with

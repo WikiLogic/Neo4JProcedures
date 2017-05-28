@@ -30,7 +30,7 @@ Navigate to the root folder with the pom.xml file in your command window
 
 run: mvn clean package
 
-target folder contains original-procedure-template-1.0.0-SNAPSHOT
+target folder contains original-WL-1.0.0
 
 
 ####Setup development:

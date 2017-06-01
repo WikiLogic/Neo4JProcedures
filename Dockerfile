@@ -6,7 +6,7 @@ FROM neo4j:3.0
 # Install the db procedures
 
 # Define mountable directories.
-VOLUME ["./neo4j/data", "/neo4j/logs"]
+VOLUME ["./neo4j/data", "./neo4j/logs"]
 
 # Expose ports.
 EXPOSE 7474

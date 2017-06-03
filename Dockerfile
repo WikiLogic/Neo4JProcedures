@@ -4,6 +4,7 @@
 FROM neo4j:3.0
 
 # Install the db procedures
+COPY ./plugins ./plugins
 
 # Define mountable directories.
 VOLUME ["./neo4j/data", "./neo4j/logs"]

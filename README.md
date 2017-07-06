@@ -36,3 +36,5 @@ target folder contains original-WL-1.0.0
 ####Setup development:
 
 Coming soon
+
+`docker build -t my-maven -f Dockerfile.dev .`

@@ -1,6 +1,10 @@
 # Neo4JProcedures
+
 Java code for updating the database
 
+## Quick Overview
+
+`pom.xml` is like a package.json file but it's used by [Maven](https://maven.apache.org/) to compile Java.
 
 
 ####Install as a user only:
@@ -33,7 +37,7 @@ run: mvn clean package
 target folder contains original-WL-1.0.0
 
 
-####Setup development:
+#### Setup development:
 
 Coming soon
 

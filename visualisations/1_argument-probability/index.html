@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <style> 
+    body {padding: 0; margin: 0; text-align: center;} 
+    canvas { display: block; margin: 0; }
+    button { background: #eee; margin: 2px 5px; border: 0; padding: 5px 10px; cursor: pointer; position: relative; top: -30px; }
+  </style>
+  </head>
+  <body>
+    <div id="app">
+        <arg-item v-for="arg in args" v-bind:arg="arg" v-bind:key="arg.id"></arg-item>
+    </div>
+    <script src="https://unpkg.com/vue"></script>
+    <script src="sketch.js"></script>
+  </body>
+</html>

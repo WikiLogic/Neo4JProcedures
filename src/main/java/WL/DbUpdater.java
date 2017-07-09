@@ -40,9 +40,11 @@ public class DbUpdater {
         return "Hello " + name;
     }
 
+
     /**
+     * Builds an argument group from a list of claim IDs and works out the probability of the group.
      * Arguments multiply all parts together as its the group is only valid if all the parts happen to be correct 
-     * This means if one premise is > 50, it will make it too small to count
+     * This means if one premise is less then 0.5, it will make it too small to count
      */
     @Procedure(value = "WL.CreateArgumentGroup", mode = Mode.WRITE)
     @Description("Takes node id's and create a new arg group with those nodes as premises")
@@ -74,6 +76,11 @@ public class DbUpdater {
         return Stream.of(new LongResult(argGroup.getId()));
     }
 
+
+    /**
+     * Connects an argument group to a claim and works out the new claim probability.
+     * (this logic should probably be worked into the CreateArgumentGroup as well depending on performance, what ever is faster!
+     */
     @Procedure(value = "WL.AttachArgumentGroup", mode = Mode.WRITE)
     @Description("Link the argGroupId to the claimId with a connection of the type passed in")
     //http://stackoverflow.com/questions/33163622/neo4j-update-properties-on-10-million-nodes
@@ -88,9 +95,9 @@ public class DbUpdater {
         argGroup.createRelationshipTo(claim, rType);
 
         /*
-        //if the arg is >50 then its useful so add it (otherwise its a false -differs from OPPOSSES- argument so we dont include it for working out claims final score)
+        //if the arg is >0.5 then its useful so add it (otherwise its a false -differs from OPPOSSES- argument so we dont include it for working out claims final score)
         Double argProb = new Double(argGroup.getProperty("probability").toString()).doubleValue();
-        if (argProb < 50)
+        if (argProb < 0.5)
             return;
         
         //get the claim property as it is right now before argGroup added
@@ -122,6 +129,7 @@ public class DbUpdater {
         //return a claim object with attached arg groups - this is a query
         return GetClaimWithArgs(claimId);
     }
+
 
     @Procedure(value = "WL.GetClaimWithArgs", mode = Mode.READ)
     @Description("Gets the claim id and its argGroups")

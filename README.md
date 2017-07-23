@@ -11,7 +11,7 @@ Java code for updating the database
 
  Download binary from https://github.com/WikiLogic/Neo4JProcedures/releases
  
- Add to ...Documents\Neo4j\default.graphdb\plugins  Note: Windows has two plugin folders. Do NOT use the plugin folder at the installation   directory.
+ Add to ...Documents\Neo4j\default.graphdb\plugins  Note: Windows has two plugin folders. Do NOT use the plugin folder at the installation directory. Create the folder if necessary.
  
  Restart Neo4
  
@@ -34,7 +34,7 @@ Navigate to the root folder with the pom.xml file in your command window
 
 run: mvn clean package
 
-target folder contains original-WL-1.0.0
+The target folder contains newly created original-WL-1.0.0
 
 
 #### Setup development:

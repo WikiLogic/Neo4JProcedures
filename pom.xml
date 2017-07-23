@@ -28,6 +28,8 @@
       <scope>provided</scope>
     </dependency>
 
+    <!-- the below removed for nwo as it seems to report errors no longer valid in 3.2>
+
     <dependency>
     <groupId>org.neo4j</groupId>
     <artifactId>procedure-compiler</artifactId>
@@ -35,6 +37,8 @@
     <scope>compile</scope>
     <optional>true</optional>
    </dependency>
+-->
+
     <!-- Test Dependencies -->
     <dependency>
       <!-- This is used for a utility that lets us start Neo4j with

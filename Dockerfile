@@ -4,7 +4,7 @@
 FROM neo4j:3.0
 
 # Install the db procedures
-COPY ./plugins ./plugins
+# COPY ./plugins ./plugins
 
 # Expose ports.
 EXPOSE 7474

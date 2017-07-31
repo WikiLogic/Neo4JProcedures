@@ -1,5 +1,5 @@
 
-package WL.ReturnObjects;
+package WL.WLhelper;
 
 
 public class LongResult {

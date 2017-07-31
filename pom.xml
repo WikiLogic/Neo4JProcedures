@@ -29,7 +29,6 @@
     </dependency>
 
     <!-- the below removed for nwo as it seems to report errors no longer valid in 3.2>
-
     <dependency>
     <groupId>org.neo4j</groupId>
     <artifactId>procedure-compiler</artifactId>
@@ -38,6 +37,8 @@
     <optional>true</optional>
    </dependency>
 -->
+  
+
 
     <!-- Test Dependencies -->
     <dependency>

@@ -1,7 +1,9 @@
 package WL;
 
-import WL.ReturnObjects.LongResult;
-import WL.ReturnObjects.ClaimResult;
+import WL.WLhelper.LongResult;
+import WL.WLhelper.ClaimResult;
+import WL.WLhelper.Enums;
+import WL.WLhelper.RelationshipTypeImpl;
 
 import java.util.List;
 import java.util.stream.Stream;
@@ -40,7 +42,6 @@ public class DbUpdater {
         return "Hello " + name;
     }
 
-
     /**
      * Builds an argument group from a list of claim IDs and works out the probability of the group.
      * Arguments multiply all parts together as its the group is only valid if all the parts happen to be correct 
@@ -57,7 +58,7 @@ public class DbUpdater {
         for (Iterator<Long> i = nodeIds.iterator(); i.hasNext();) {
             Long item = i.next();
             Node node = db.getNodeById(item);
-            RelationshipType rType = new RelationshipTypeImpl("USED_IN");
+            RelationshipType rType = new WL.WLhelper.RelationshipTypeImpl("USED_IN");
             node.createRelationshipTo(argGroup, rType);
 
             Double thisProb = new Double(node.getProperty("probability").toString()).doubleValue();
@@ -75,7 +76,6 @@ public class DbUpdater {
         //return Stream.of(argGroup.getId());
         return Stream.of(new LongResult(argGroup.getId()));
     }
-
 
     /**
      * Connects an argument group to a claim and works out the new claim probability.
@@ -130,7 +130,6 @@ public class DbUpdater {
         return GetClaimWithArgs(claimId);
     }
 
-
     @Procedure(value = "WL.GetClaimWithArgs", mode = Mode.READ)
     @Description("Gets the claim id and its argGroups")
     public Stream<ClaimResult> GetClaimWithArgs(@Name("claimId") long claimId) {
@@ -166,7 +165,7 @@ public class DbUpdater {
 
         //get all the claims realtionships where it was used in the argGroup
         Iterable<org.neo4j.graphdb.Relationship> usedInRelations = startClaim
-                .getRelationships(MyRelationshipTypes.USED_IN, Direction.OUTGOING);
+                .getRelationships(Enums.MyRelationshipTypes.USED_IN, Direction.OUTGOING);
 
         double newArgProbability = 0;
         for (org.neo4j.graphdb.Relationship entry : usedInRelations) {
@@ -180,7 +179,7 @@ public class DbUpdater {
 
                 //get all its nodes and if they are all correct now, change probability
                 Iterable<org.neo4j.graphdb.Relationship> nodesInArgGroup = argNode
-                        .getRelationships(MyRelationshipTypes.USED_IN, Direction.INCOMING);
+                        .getRelationships(Enums.MyRelationshipTypes.USED_IN, Direction.INCOMING);
                 boolean state = true;
                 for (org.neo4j.graphdb.Relationship node : nodesInArgGroup) {
                     if (new Double(node.getProperty("probability").toString()).doubleValue() < .5) {
@@ -212,8 +211,7 @@ public class DbUpdater {
         Transaction transaction = db.beginTx();
 
         //get all the claims realtionships where it was used in the argGroup
-        Iterable<org.neo4j.graphdb.Relationship> usedForRelations = originalArgNode
-                .getRelationships(MyRelationshipTypes.SUPPORTS, Direction.OUTGOING);
+        Iterable<org.neo4j.graphdb.Relationship> usedForRelations = originalArgNode.getRelationships(Enums.MyRelationshipTypes.SUPPORTS, Direction.OUTGOING);
 
         double newClaimProbability = 0;
         for (org.neo4j.graphdb.Relationship entry : usedForRelations) {
@@ -224,7 +222,7 @@ public class DbUpdater {
                 //the arg node getting its usedForRelations probably only gets back othe one node but for future proof
                 //we check that the node does not have other arg goups
                 Iterable<org.neo4j.graphdb.Relationship> supportingArgGroups = claimNode
-                        .getRelationships(MyRelationshipTypes.SUPPORTS, Direction.INCOMING);
+                        .getRelationships(Enums.MyRelationshipTypes.SUPPORTS, Direction.INCOMING);
                 boolean state = false;
                 for (org.neo4j.graphdb.Relationship argGroup : supportingArgGroups) {
                     Node argNode = argGroup.getEndNode();
@@ -237,8 +235,7 @@ public class DbUpdater {
                 }
 
                 //if it is false, there is not even one supporting arg group for the claim so it needs to udpate
-                if (state = false)
-                    claimNode.setProperty("probability", 0.0);
+                if (state = false)  claimNode.setProperty("probability", 0.0);
 
                 UpdateArgState(claimNode);
 
@@ -250,24 +247,6 @@ public class DbUpdater {
         transaction.success();
         transaction.close();
     }
-
-    enum MyRelationshipTypes implements RelationshipType {
-        USED_IN, SUPPORTS, OPPOSSES
-    }
-
-    private static class RelationshipTypeImpl implements RelationshipType {
-
-        private final String _name;
-
-        RelationshipTypeImpl(String name) {
-            _name = name;
-        }
-
-        @Override
-        public String name() {
-            return _name;
-        }
-    }
 }
 
 // private void UpdateArgProbability(Node startClaim, Double claimBeforeChange, Double claimAfterChange) {
@@ -275,7 +254,7 @@ public class DbUpdater {
 
 //     //get all the claims realtionships where it was used in the argGroup
 //     Iterable<org.neo4j.graphdb.Relationship> usedInRelations = startClaim
-//             .getRelationships(MyRelationshipTypes.USED_IN, Direction.OUTGOING);
+//             .getRelationships(Enums.MyRelationshipTypes.USED_IN, Direction.OUTGOING);
 
 //     double newArgProbability = 0;
 //     for (org.neo4j.graphdb.Relationship entry : usedInRelations) {
@@ -302,7 +281,7 @@ public class DbUpdater {
 
 //     //get all the claims realtionships where it was used in the argGroup
 //     Iterable<org.neo4j.graphdb.Relationship> usedForRelations = argNode
-//             .getRelationships(MyRelationshipTypes.SUPPORTS, Direction.OUTGOING);
+//             .getRelationships(Enums.MyRelationshipTypes.SUPPORTS, Direction.OUTGOING);
 
 //     double newClaimProbability = 0;
 //     for (org.neo4j.graphdb.Relationship entry : usedForRelations) {
@@ -413,14 +392,3 @@ public class DbUpdater {
 //     // }
 // }
 
-// String filter = " WHERE name starts with 'apoc.' "
-//         + " AND ({name} IS NULL  OR toLower(name) CONTAINS toLower({name}) "
-//         + " OR ({desc} IS NOT NULL AND toLower(description) CONTAINS toLower({desc}))) "
-//         + "RETURN type, name, description, signature ";
-
-// String query = "WITH 'procedure' as type CALL dbms.procedures() yield name, description, signature " + filter +
-//             " UNION ALL " +
-//             "WITH 'function' as type CALL dbms.functions() yield name, description, signature " + filter;
-
-//             return db.execute(query, map("name", name, "desc", searchText ? name : null))
-//             .stream().map(HelpResult::new);
